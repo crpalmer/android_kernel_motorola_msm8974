@@ -365,6 +365,35 @@ int mdp3_ppp_vote_update(struct msm_fb_data_type *mfd)
 	return rc;
 }
 
+int mdp3_ppp_vote_update(struct msm_fb_data_type *mfd)
+{
+	struct mdss_panel_info *panel_info = mfd->panel_info;
+	uint64_t req_bw = 0, ab = 0, ib = 0;
+	int rate = 0;
+	int rc = 0;
+	if (!ppp_stat->bw_on)
+		pr_err("%s: PPP vote update in wrong state\n", __func__);
+
+	rate = MDP_BLIT_CLK_RATE;
+	req_bw = panel_info->xres * panel_info->yres *
+		panel_info->mipi.frame_rate *
+		MDP_PPP_MAX_BPP *
+		MDP_PPP_DYNAMIC_FACTOR *
+		MDP_PPP_MAX_READ_WRITE;
+	ib = (req_bw * 3) / 2;
+
+	if (ppp_stat->bw_optimal)
+		ab = ib / 2;
+	else
+		ab = req_bw;
+	rc = mdp3_bus_scale_set_quota(MDP3_CLIENT_PPP, ab, ib);
+	if (rc < 0) {
+		pr_err("%s: scale_set_quota failed\n", __func__);
+		return rc;
+	}
+	return rc;
+}
+
 int mdp3_ppp_turnon(struct msm_fb_data_type *mfd, int on_off)
 {
 	struct mdss_panel_info *panel_info = mfd->panel_info;
