@@ -668,6 +668,47 @@ static void mdss_mdp_perf_calc_ctl(struct mdss_mdp_ctl *ctl,
 
 	if (ctl->is_video_mode)
 		perf->bw_ctl = IB_FUDGE_FACTOR(perf->bw_ctl);
+}
+
+int mdss_mdp_perf_bw_check(struct mdss_mdp_ctl *ctl,
+		struct mdss_mdp_pipe **left_plist, int left_cnt,
+		struct mdss_mdp_pipe **right_plist, int right_cnt)
+{
+	struct mdss_data_type *mdata = ctl->mdata;
+	struct mdss_mdp_perf_params perf;
+	u32 bw, threshold;
+
+	/* we only need bandwidth check on real-time clients (interfaces) */
+	if (ctl->intf_type == MDSS_MDP_NO_INTF)
+		return 0;
+
+	__mdss_mdp_perf_calc_ctl_helper(ctl, &perf,
+			left_plist, left_cnt, right_plist, right_cnt);
+
+	/* convert bandwidth to kb */
+	bw = DIV_ROUND_UP_ULL(perf.bw_ctl, 1000);
+	pr_debug("calculated bandwidth=%uk\n", bw);
+
+	threshold = ctl->is_video_mode ? mdata->max_bw_low : mdata->max_bw_high;
+	if (bw > threshold) {
+		pr_debug("exceeds bandwidth: %ukb > %ukb\n", bw, threshold);
+		return -E2BIG;
+	}
+
+	return 0;
+}
+
+static void mdss_mdp_perf_calc_ctl(struct mdss_mdp_ctl *ctl,
+		struct mdss_mdp_perf_params *perf)
+{
+	struct mdss_mdp_pipe **left_plist, **right_plist;
+
+	left_plist = ctl->mixer_left ? ctl->mixer_left->stage_pipe : NULL;
+	right_plist = ctl->mixer_right ? ctl->mixer_right->stage_pipe : NULL;
+
+	__mdss_mdp_perf_calc_ctl_helper(ctl, perf,
+			left_plist, (left_plist ? MDSS_MDP_MAX_STAGE : 0),
+			right_plist, (right_plist ? MDSS_MDP_MAX_STAGE : 0));
 
 	pr_debug("ctl=%d clk_rate=%u\n", ctl->num, perf->mdp_clk_rate);
 	pr_debug("bw_overlap=%llu bw_prefill=%llu prefill_byptes=%d\n",
