@@ -1054,7 +1054,7 @@ static int msm_compr_ioctl_shared(struct snd_pcm_substream *substream,
 			pr_debug("SND_AUDIOCODEC_AC3\n");
 			compr->codec = FORMAT_AC3;
 			pr_debug("params_length: %d\n", ddp->params_length);
-			for (i = 0; i < params_length; i++)
+			for (i = 0; i < params_length/sizeof(int); i++)
 				pr_debug("params_value[%d]: %x\n", i,
 					params_value_data[i]);
 			for (i = 0; i < ddp->params_length/2; i++) {
