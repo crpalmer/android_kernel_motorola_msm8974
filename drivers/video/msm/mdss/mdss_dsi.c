@@ -514,8 +514,19 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		 */
 		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x01F);
 		usleep(100);
+
+		/* Check to make sure that all active data lanes are in ULPS */
+		if (pinfo->data_lane3)
+			active_lanes |= BIT(11);
+		if (pinfo->data_lane2)
+			active_lanes |= BIT(10);
+		if (pinfo->data_lane1)
+			active_lanes |= BIT(9);
+		if (pinfo->data_lane0)
+			active_lanes |= BIT(8);
+		active_lanes |= BIT(12); /* clock lane */
 		lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8);
-		if (lane_status & 0x1F00) {
+		if (lane_status & active_lanes) {
 			pr_err("%s: ULPS entry req failed. Lane status=0x%08x\n",
 				__func__, lane_status);
 			ret = -EINVAL;
