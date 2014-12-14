@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -61,8 +61,12 @@ struct mdss_panel_cfg *mdp3_panel_intf_type(int intf_val);
 
 int mdp3_panel_get_boot_cfg(void);
 
+<<<<<<< HEAD
 int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp,
 					struct device_node *node);
 int dsi_panel_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg);
 
+=======
+void msm_dsi_sw_reset(void);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 #endif /* DSI_V2_H */

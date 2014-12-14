@@ -20,12 +20,13 @@
 #include "mdss_timeout.h"
 
 #define DMA_STOP_POLL_SLEEP_US 1000
-#define DMA_STOP_POLL_TIMEOUT_US 32000
+#define DMA_STOP_POLL_TIMEOUT_US 200000
 #define DMA_HISTO_RESET_TIMEOUT_MS 40
 #define DMA_LUT_CONFIG_MASK 0xfffffbe8
 #define DMA_CCS_CONFIG_MASK 0xfffffc17
 #define HIST_WAIT_TIMEOUT(frame) ((75 * HZ * (frame)) / 1000)
 
+<<<<<<< HEAD
 static int mdp3_wait4vsync(struct mdp3_dma *dma, bool killable,
 	unsigned long timeout)
 {
@@ -69,6 +70,12 @@ static int mdp3_wait4vsync(struct mdp3_dma *dma, bool killable,
 
 	return rc;
 }
+=======
+#define VSYNC_SELECT 0x024
+#define VSYNC_TOTAL_LINES_SHIFT 21
+#define VSYNC_COUNT_MASK 0x7ffff
+#define VSYNC_THRESH_CONT_SHIFT 16
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 static void mdp3_vsync_intr_handler(int type, void *arg)
 {
@@ -313,32 +320,48 @@ static void mdp3_dma_clk_auto_gating(struct mdp3_dma *dma, int enable)
 	}
 }
 
-static int mdp3_dma_sync_config(struct mdp3_dma *dma,
-			struct mdp3_dma_source *source_config)
+
+int mdp3_dma_sync_config(struct mdp3_dma *dma,
+	struct mdp3_dma_source *source_config, struct mdp3_tear_check *te)
 {
-	u32 sync_config;
+	u32 vsync_clk_speed_hz, vclks_line, cfg;
+	int porch = source_config->vporch;
+	int height = source_config->height;
+	int total_lines = height + porch;
 	int dma_sel = dma->dma_sel;
 
-	pr_debug("mdp3_dma_sync_config\n");
+	vsync_clk_speed_hz = MDP_VSYNC_CLK_RATE;
 
-	if (dma->output_config.out_sel == MDP3_DMA_OUTPUT_SEL_DSI_CMD) {
-		int porch = source_config->vporch;
-		int height = source_config->height;
-		int vtotal = height + porch;
-		sync_config = vtotal << 21;
-		sync_config |= source_config->vsync_count;
-		sync_config |= BIT(19);
-		sync_config |= BIT(20);
+	cfg = total_lines << VSYNC_TOTAL_LINES_SHIFT;
+	total_lines *= te->frame_rate;
 
-		MDP3_REG_WRITE(MDP3_REG_SYNC_CONFIG_0 + dma_sel, sync_config);
-		MDP3_REG_WRITE(MDP3_REG_VSYNC_SEL, 0x024);
-		MDP3_REG_WRITE(MDP3_REG_PRIMARY_VSYNC_INIT_VAL + dma_sel,
-				height);
-		MDP3_REG_WRITE(MDP3_REG_PRIMARY_RD_PTR_IRQ, 0x5);
-		MDP3_REG_WRITE(MDP3_REG_SYNC_THRESH_0 + dma_sel, (4 << 16 | 2));
-		MDP3_REG_WRITE(MDP3_REG_PRIMARY_START_P0S + dma_sel, porch);
-		MDP3_REG_WRITE(MDP3_REG_TEAR_CHECK_EN, 0x1);
+	vclks_line = (total_lines) ? vsync_clk_speed_hz / total_lines : 0;
+
+	cfg |= BIT(19);
+	if (te->hw_vsync_mode)
+		cfg |= BIT(20);
+
+	if (te->refx100) {
+		vclks_line = vclks_line * te->frame_rate *
+			100 / te->refx100;
+	} else {
+		pr_warn("refx100 cannot be zero! Use 6000 as default\n");
+		vclks_line = vclks_line * te->frame_rate *
+			100 / 6000;
 	}
+
+	cfg |= (vclks_line & VSYNC_COUNT_MASK);
+
+	MDP3_REG_WRITE(MDP3_REG_SYNC_CONFIG_0 + dma_sel, cfg);
+	MDP3_REG_WRITE(MDP3_REG_VSYNC_SEL, VSYNC_SELECT);
+	MDP3_REG_WRITE(MDP3_REG_PRIMARY_VSYNC_INIT_VAL + dma_sel,
+				te->vsync_init_val);
+	MDP3_REG_WRITE(MDP3_REG_PRIMARY_RD_PTR_IRQ, te->rd_ptr_irq);
+	MDP3_REG_WRITE(MDP3_REG_SYNC_THRESH_0 + dma_sel,
+		((te->sync_threshold_continue << VSYNC_THRESH_CONT_SHIFT) |
+				 te->sync_threshold_start));
+	MDP3_REG_WRITE(MDP3_REG_PRIMARY_START_P0S + dma_sel, te->start_pos);
+	MDP3_REG_WRITE(MDP3_REG_TEAR_CHECK_EN, te->tear_check_en);
 	return 0;
 }
 
@@ -371,8 +394,6 @@ static int mdp3_dmap_config(struct mdp3_dma *dma,
 
 	dma->source_config = *source_config;
 	dma->output_config = *output_config;
-	mdp3_dma_sync_config(dma, source_config);
-
 	mdp3_irq_enable(MDP3_INTR_LCDC_UNDERFLOW);
 	mdp3_dma_callback_setup(dma);
 	return 0;
@@ -425,7 +446,6 @@ static int mdp3_dmas_config(struct mdp3_dma *dma,
 
 	dma->source_config = *source_config;
 	dma->output_config = *output_config;
-	mdp3_dma_sync_config(dma, source_config);
 
 	mdp3_dma_callback_setup(dma);
 	return 0;
@@ -997,6 +1017,7 @@ int mdp3_dma_init(struct mdp3_dma *dma)
 	switch (dma->dma_sel) {
 	case MDP3_DMA_P:
 		dma->dma_config = mdp3_dmap_config;
+		dma->dma_sync_config = mdp3_dma_sync_config;
 		dma->dma_config_source = mdp3_dmap_config_source;
 		dma->config_cursor = mdp3_dmap_cursor_config;
 		dma->config_ccs = mdp3_dmap_ccs_config;
@@ -1013,6 +1034,7 @@ int mdp3_dma_init(struct mdp3_dma *dma)
 		break;
 	case MDP3_DMA_S:
 		dma->dma_config = mdp3_dmas_config;
+		dma->dma_sync_config = mdp3_dma_sync_config;
 		dma->dma_config_source = mdp3_dmas_config_source;
 		dma->config_cursor = NULL;
 		dma->config_ccs = NULL;
@@ -1041,8 +1063,11 @@ int mdp3_dma_init(struct mdp3_dma *dma)
 	dma->vsync_client.arg = NULL;
 	dma->histo_state = MDP3_DMA_HISTO_STATE_IDLE;
 	dma->update_src_cfg = false;
+<<<<<<< HEAD
 
 	dma->vsync_cnt = 0;
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 	memset(&dma->cursor, 0, sizeof(dma->cursor));
 	memset(&dma->ccs_config, 0, sizeof(dma->ccs_config));
@@ -1136,7 +1161,9 @@ int dsi_video_config(struct mdp3_intf *intf, struct mdp3_intf_cfg *cfg)
 		temp |= BIT(2);
 	MDP3_REG_WRITE(MDP3_REG_DSI_VIDEO_CTL_POLARITY, temp);
 
-	MDP3_REG_WRITE(MDP3_REG_DSI_VIDEO_UNDERFLOW_CTL, 0x800000ff);
+	v->underflow_color |= 0x80000000;
+	MDP3_REG_WRITE(MDP3_REG_DSI_VIDEO_UNDERFLOW_CTL, v->underflow_color);
+
 	return 0;
 }
 

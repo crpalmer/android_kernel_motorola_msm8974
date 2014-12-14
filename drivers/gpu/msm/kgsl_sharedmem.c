@@ -259,8 +259,8 @@ static int kgsl_drv_full_cache_threshold_store(struct device *dev,
 	int ret;
 	unsigned int thresh = 0;
 
-	ret = kgsl_sysfs_store(buf, count, &thresh);
-	if (ret != count)
+	ret = kgsl_sysfs_store(buf, &thresh);
+	if (ret)
 		return ret;
 
 	kgsl_driver.full_cache_threshold = thresh;
@@ -392,7 +392,7 @@ static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
 
 static int kgsl_page_alloc_vmflags(struct kgsl_memdesc *memdesc)
 {
-	return VM_RESERVED | VM_DONTEXPAND;
+	return VM_RESERVED | VM_DONTEXPAND | VM_DONTCOPY;
 }
 
 /*
@@ -439,7 +439,7 @@ static void kgsl_page_alloc_free(struct kgsl_memdesc *memdesc)
 
 static int kgsl_contiguous_vmflags(struct kgsl_memdesc *memdesc)
 {
-	return VM_RESERVED | VM_IO | VM_PFNMAP | VM_DONTEXPAND;
+	return VM_RESERVED | VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTCOPY;
 }
 
 /*

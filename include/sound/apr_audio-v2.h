@@ -2265,6 +2265,7 @@ struct afe_port_cmdrsp_get_param_v2 {
 #define VPM_TX_SM_ECNS_COPP_TOPOLOGY			0x00010F71
 #define VPM_TX_DM_FLUENCE_COPP_TOPOLOGY			0x00010F72
 #define VPM_TX_QMIC_FLUENCE_COPP_TOPOLOGY		0x00010F75
+#define VPM_TX_DM_RFECNS_COPP_TOPOLOGY			0x00010F86
 
 /* Memory map regions command payload used by the
  * #ASM_CMD_SHARED_MEM_MAP_REGIONS ,#ADM_CMD_SHARED_MEM_MAP_REGIONS
@@ -6884,6 +6885,7 @@ struct afe_param_id_clip_bank_sel {
 #define Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ		 0xFA000
 #define Q6AFE_LPASS_IBIT_CLK_768_KHZ		 0xBB800
 #define Q6AFE_LPASS_IBIT_CLK_512_KHZ		 0x7D000
+#define Q6AFE_LPASS_IBIT_CLK_256_KHZ		 0x3E800
 #define Q6AFE_LPASS_IBIT_CLK_DISABLE		     0x0
 
 /* Supported LPASS CLK sources */

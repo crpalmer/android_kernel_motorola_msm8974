@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,6 +31,7 @@
 #include "mdss_mdp.h"
 #include "mdp3_ctrl.h"
 
+<<<<<<< HEAD
 #define STATUS_CHECK_INTERVAL 8000
 #define STATUS_CHECK_INTERVAL_MIN 200
 
@@ -39,20 +40,25 @@ struct dsi_status_data {
 	struct delayed_work check_status;
 	struct msm_fb_data_type *mfd;
 };
+=======
+#define STATUS_CHECK_INTERVAL_MS 5000
+#define STATUS_CHECK_INTERVAL_MIN_MS 200
+#define DSI_STATUS_CHECK_DISABLE 0
+
+static uint32_t interval = STATUS_CHECK_INTERVAL_MS;
+static uint32_t dsi_status_disable = DSI_STATUS_CHECK_DISABLE;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 struct dsi_status_data *pstatus_data;
-static uint32_t interval = STATUS_CHECK_INTERVAL;
 
 /*
- * check_dsi_ctrl_status() - Check DSI controller status periodically.
+ * check_dsi_ctrl_status() - Reads MFD structure and
+ * calls platform specific DSI ctrl Status function.
  * @work  : dsi controller status data
- *
- * This function calls check_status API on DSI controller to send the BTA
- * command. If DSI controller fails to acknowledge the BTA command, it sends
- * the PANEL_ALIVE=0 status to HAL layer.
  */
 static void check_dsi_ctrl_status(struct work_struct *work)
 {
 	struct dsi_status_data *pdsi_status = NULL;
+<<<<<<< HEAD
 	struct mdss_panel_data *pdata = NULL;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 #ifdef CONFIG_FB_MSM_MDSS_MDP3
@@ -62,20 +68,23 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 	struct mdss_mdp_ctl *ctl = NULL;
 #endif
 	int ret = 0;
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 	pdsi_status = container_of(to_delayed_work(work),
 		struct dsi_status_data, check_status);
+
 	if (!pdsi_status) {
 		pr_err("%s: DSI status data not available\n", __func__);
 		return;
 	}
 
-	pdata = dev_get_platdata(&pdsi_status->mfd->pdev->dev);
-	if (!pdata) {
-		pr_err("%s: Panel data not available\n", __func__);
+	if (!pdsi_status->mfd) {
+		pr_err("%s: FB data not available\n", __func__);
 		return;
 	}
 
+<<<<<<< HEAD
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 							panel_data);
 	if (!ctrl_pdata || !ctrl_pdata->check_status) {
@@ -133,6 +142,9 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 							__func__, envp[0]);
 		}
 	}
+=======
+	pdsi_status->mfd->mdp.check_dsi_status(work, interval);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 }
 
 /*
@@ -153,6 +165,10 @@ static int fb_event_callback(struct notifier_block *self,
 	struct dsi_status_data *pdata = container_of(self,
 				struct dsi_status_data, fb_notifier);
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+<<<<<<< HEAD
+=======
+	struct mdss_panel_info *pinfo;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 	pdata->mfd = evdata->info->par;
 	ctrl_pdata = container_of(dev_get_platdata(&pdata->mfd->pdev->dev),
@@ -161,13 +177,30 @@ static int fb_event_callback(struct notifier_block *self,
 		pr_err("%s: DSI ctrl not available\n", __func__);
 		return NOTIFY_BAD;
 	}
+<<<<<<< HEAD
 	if (ctrl_pdata->check_status_disabled) {
 		pr_debug("%s: status_check disabled\n", __func__);
+=======
+
+	pinfo = &ctrl_pdata->panel_data.panel_info;
+
+	if (!(pinfo->esd_check_enabled)) {
+		pr_debug("ESD check is not enaled in panel dtsi\n");
+		return NOTIFY_DONE;
+	}
+
+	if (dsi_status_disable) {
+		pr_debug("%s: DSI status disabled\n", __func__);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		return NOTIFY_DONE;
 	}
 
 	if (event == FB_EVENT_BLANK && evdata) {
 		int *blank = evdata->data;
+		struct dsi_status_data *pdata = container_of(self,
+				struct dsi_status_data, fb_notifier);
+		pdata->mfd = evdata->info->par;
+
 		switch (*blank) {
 		case FB_BLANK_UNBLANK:
 			schedule_delayed_work(&pdata->check_status,
@@ -187,6 +220,24 @@ static int fb_event_callback(struct notifier_block *self,
 	return 0;
 }
 
+<<<<<<< HEAD
+=======
+static int param_dsi_status_disable(const char *val, struct kernel_param *kp)
+{
+	int ret = 0;
+	int int_val;
+
+	ret = kstrtos32(val, 0, &int_val);
+	if (ret)
+		return ret;
+
+	pr_info("%s: Set DSI status disable to %d\n",
+			__func__, int_val);
+	*((int *)kp->arg) = int_val;
+	return ret;
+}
+
+>>>>>>> caf/LA.BF.1.1_rb1.9
 static int param_set_interval(const char *val, struct kernel_param *kp)
 {
 	int ret = 0;
@@ -195,7 +246,11 @@ static int param_set_interval(const char *val, struct kernel_param *kp)
 	ret = kstrtos32(val, 0, &int_val);
 	if (ret)
 		return ret;
+<<<<<<< HEAD
 	if (int_val < STATUS_CHECK_INTERVAL_MIN) {
+=======
+	if (int_val < STATUS_CHECK_INTERVAL_MIN_MS) {
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		pr_err("%s: Invalid value %d used, ignoring\n",
 						__func__, int_val);
 		ret = -EINVAL;
@@ -245,10 +300,19 @@ void __exit mdss_dsi_status_exit(void)
 }
 
 module_param_call(interval, param_set_interval, param_get_uint,
+<<<<<<< HEAD
 							&interval, 0644);
+=======
+						&interval, 0644);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 MODULE_PARM_DESC(interval,
 		"Duration in milliseconds to send BTA command for checking"
 		"DSI status periodically");
+
+module_param_call(dsi_status_disable, param_dsi_status_disable, param_get_uint,
+						&dsi_status_disable, 0644);
+MODULE_PARM_DESC(dsi_status_disable,
+		"Disable DSI status check");
 
 module_init(mdss_dsi_status_init);
 module_exit(mdss_dsi_status_exit);

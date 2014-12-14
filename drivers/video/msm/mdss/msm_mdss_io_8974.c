@@ -65,7 +65,12 @@ int mdss_dsi_clk_init(struct platform_device *pdev,
 		goto mdss_dsi_clk_err;
 	}
 
+<<<<<<< HEAD
 	if (ctrl_pdata->panel_data.panel_info.type == MIPI_CMD_PANEL) {
+=======
+	if ((ctrl_pdata->panel_data.panel_info.type == MIPI_CMD_PANEL) ||
+		ctrl_pdata->panel_data.panel_info.mipi.dynamic_switch_enabled) {
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		ctrl_pdata->mmss_misc_ahb_clk = clk_get(dev, "core_mmss_clk");
 		if (IS_ERR(ctrl_pdata->mmss_misc_ahb_clk)) {
 			rc = PTR_ERR(ctrl_pdata->mmss_misc_ahb_clk);
@@ -217,7 +222,7 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 	}
 
 	/* find the mnd settings from mnd_table entry */
-	for (; mnd_entry != mnd_table + ARRAY_SIZE(mnd_table); ++mnd_entry) {
+	for (; mnd_entry < mnd_table + ARRAY_SIZE(mnd_table); ++mnd_entry) {
 		if (((mnd_entry->lanes) == lanes) &&
 			((mnd_entry->bpp) == bpp))
 			break;
@@ -463,6 +468,7 @@ static void mdss_dsi_link_clk_disable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	clk_disable(ctrl_pdata->pixel_clk);
 	clk_disable(ctrl_pdata->byte_clk);
 }
+<<<<<<< HEAD
 
 static int mdss_dsi_link_clk_start(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -521,11 +527,79 @@ static int __mdss_dsi_update_clk_cnt(u32 *clk_cnt, int enable)
 	return changed;
 }
 
+=======
+
+static int mdss_dsi_link_clk_start(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int rc = 0;
+
+	rc = mdss_dsi_link_clk_set_rate(ctrl);
+	if (rc) {
+		pr_err("%s: failed to set clk rates. rc=%d\n",
+			__func__, rc);
+		goto error;
+	}
+
+	rc = mdss_dsi_link_clk_prepare(ctrl);
+	if (rc) {
+		pr_err("%s: failed to prepare clks. rc=%d\n",
+			__func__, rc);
+		goto error;
+	}
+
+	rc = mdss_dsi_link_clk_enable(ctrl);
+	if (rc) {
+		pr_err("%s: failed to enable clks. rc=%d\n",
+			__func__, rc);
+		mdss_dsi_link_clk_unprepare(ctrl);
+		goto error;
+	}
+
+error:
+	return rc;
+}
+
+static void mdss_dsi_link_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	mdss_dsi_link_clk_disable(ctrl);
+	mdss_dsi_link_clk_unprepare(ctrl);
+}
+
+static int __mdss_dsi_update_clk_cnt(u32 *clk_cnt, int enable)
+{
+	int changed = 0;
+
+	if (enable) {
+		if (*clk_cnt == 0)
+			changed++;
+		(*clk_cnt)++;
+	} else {
+		if (*clk_cnt != 0) {
+			(*clk_cnt)--;
+			if (*clk_cnt == 0)
+				changed++;
+		} else {
+			pr_debug("%s: clk cnt already zero\n", __func__);
+		}
+	}
+
+	return changed;
+}
+
+>>>>>>> caf/LA.BF.1.1_rb1.9
 static int mdss_dsi_clk_ctrl_sub(struct mdss_dsi_ctrl_pdata *ctrl,
 	u8 clk_type, int enable)
 {
 	int rc = 0;
 
+<<<<<<< HEAD
+=======
+	if (!ctrl) {
+		pr_err("%s: Invalid arg\n", __func__);
+		return -EINVAL;
+	}
+
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	pr_debug("%s: ndx=%d clk_type=%08x enable=%d\n", __func__,
 		ctrl->ndx, clk_type, enable);
 
@@ -598,6 +672,7 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		if (!mctrl)
 			pr_warn("%s: Unable to get master control\n", __func__);
 	}
+<<<<<<< HEAD
 
 	pr_debug("%s++: ndx=%d clk_type=%d bus_clk_cnt=%d link_clk_cnt=%d",
 		__func__, ctrl->ndx, clk_type, ctrl->bus_clk_cnt,
@@ -606,6 +681,16 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		__func__, mctrl ? "yes" : "no", mctrl ? mctrl->bus_clk_cnt : -1,
 		mctrl ? mctrl->link_clk_cnt : -1, enable);
 
+=======
+
+	pr_debug("%s++: ndx=%d clk_type=%d bus_clk_cnt=%d link_clk_cnt=%d",
+		__func__, ctrl->ndx, clk_type, ctrl->bus_clk_cnt,
+		ctrl->link_clk_cnt);
+	pr_debug("%s++: mctrl=%s m_bus_clk_cnt=%d m_link_clk_cnt=%d\n, enable=%d\n",
+		__func__, mctrl ? "yes" : "no", mctrl ? mctrl->bus_clk_cnt : -1,
+		mctrl ? mctrl->link_clk_cnt : -1, enable);
+
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	mutex_lock(&dsi_clk_lock);
 	if (clk_type & DSI_BUS_CLKS) {
 		changed = __mdss_dsi_update_clk_cnt(&ctrl->bus_clk_cnt,
@@ -654,7 +739,12 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 error_mctrl_stop:
 	mdss_dsi_clk_ctrl_sub(ctrl, clk_type, enable ? 0 : 1);
 error_ctrl:
+<<<<<<< HEAD
 	mdss_dsi_clk_ctrl_sub(mctrl, clk_type, 0);
+=======
+	if (enable && m_changed)
+		mdss_dsi_clk_ctrl_sub(mctrl, clk_type, 0);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 error_mctrl_start:
 	if (clk_type & DSI_BUS_CLKS) {
 		if (mctrl)

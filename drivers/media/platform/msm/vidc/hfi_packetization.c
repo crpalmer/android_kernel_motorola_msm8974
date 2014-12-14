@@ -1447,7 +1447,10 @@ int create_pkt_cmd_session_set_property(
 		hfi->ltrcount = hal->ltrcount;
 		hfi->trustmode = hal->trustmode;
 		pkt->size += sizeof(u32) + sizeof(struct hfi_ltrmode);
+<<<<<<< HEAD
 		pr_err("SET LTR\n");
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		break;
 	}
 	case HAL_CONFIG_VENC_USELTRFRAME:
@@ -1461,7 +1464,10 @@ int create_pkt_cmd_session_set_property(
 		hfi->refltr = hal->refltr;
 		hfi->useconstrnt = hal->useconstrnt;
 		pkt->size += sizeof(u32) + sizeof(struct hfi_ltruse);
+<<<<<<< HEAD
 		pr_err("USE LTR\n");
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		break;
 	}
 	case HAL_CONFIG_VENC_MARKLTRFRAME:
@@ -1473,7 +1479,10 @@ int create_pkt_cmd_session_set_property(
 		hfi = (struct hfi_ltrmark *) &pkt->rg_property_data[1];
 		hfi->markframe = hal->markframe;
 		pkt->size += sizeof(u32) + sizeof(struct hfi_ltrmark);
+<<<<<<< HEAD
 		pr_err("MARK LTR\n");
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		break;
 	}
 	case HAL_PARAM_VENC_HIER_P_MAX_ENH_LAYERS:

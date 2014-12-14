@@ -145,6 +145,10 @@ struct quot_adjust_info {
 	int quot_adjust;
 };
 
+static const char * const vdd_apc_name[] =	{"vdd-apc-optional-prim",
+						"vdd-apc-optional-sec",
+						"vdd-apc"};
+
 enum voltage_change_dir {
 	NO_CHANGE,
 	DOWN,
@@ -177,6 +181,10 @@ struct cpr_regulator {
 	int			vdd_mx_vmax;
 	int			vdd_mx_vmin_method;
 	int			vdd_mx_vmin;
+	int			vdd_mx_corner_map[CPR_FUSE_CORNER_MAX];
+
+	/* mem-acc regulator */
+	struct regulator	*mem_acc_vreg;
 
 	/* CPR parameters */
 	u64		cpr_fuse_bits;
@@ -517,6 +525,9 @@ static int cpr_mx_get(struct cpr_regulator *cpr_vreg, int corner, int apc_volt)
 	case VDD_MX_VMIN_MX_VMAX:
 		vdd_mx = cpr_vreg->vdd_mx_vmax;
 		break;
+	case VDD_MX_VMIN_APC_CORNER_MAP:
+		vdd_mx = cpr_vreg->vdd_mx_corner_map[fuse_corner];
+		break;
 	default:
 		vdd_mx = 0;
 		break;
@@ -549,15 +560,15 @@ static int cpr_scale_voltage(struct cpr_regulator *cpr_vreg, int corner,
 			     int new_apc_volt, enum voltage_change_dir dir)
 {
 	int rc = 0, vdd_mx_vmin = 0;
+	int fuse_corner = cpr_vreg->corner_map[corner];
 
-	/* No MX scaling if no vdd_mx */
-	if (cpr_vreg->vdd_mx == NULL)
-		dir = NO_CHANGE;
-
-	if (dir != NO_CHANGE) {
-		/* Determine the vdd_mx voltage */
+	/* Determine the vdd_mx voltage */
+	if (dir != NO_CHANGE && cpr_vreg->vdd_mx != NULL)
 		vdd_mx_vmin = cpr_mx_get(cpr_vreg, corner, new_apc_volt);
-	}
+
+	if (cpr_vreg->mem_acc_vreg && dir == DOWN)
+		rc = regulator_set_voltage(cpr_vreg->mem_acc_vreg,
+					fuse_corner, fuse_corner);
 
 	if (vdd_mx_vmin && dir == UP) {
 		if (vdd_mx_vmin != cpr_vreg->vdd_mx_vmin)
@@ -566,6 +577,10 @@ static int cpr_scale_voltage(struct cpr_regulator *cpr_vreg, int corner,
 
 	if (!rc)
 		rc = cpr_apc_set(cpr_vreg, new_apc_volt);
+
+	if (!rc && cpr_vreg->mem_acc_vreg && dir == UP)
+		rc = regulator_set_voltage(cpr_vreg->mem_acc_vreg,
+					fuse_corner, fuse_corner);
 
 	if (!rc && vdd_mx_vmin && dir == DOWN) {
 		if (vdd_mx_vmin != cpr_vreg->vdd_mx_vmin)
@@ -1215,11 +1230,17 @@ static int __devinit cpr_apc_init(struct platform_device *pdev,
 			       struct cpr_regulator *cpr_vreg)
 {
 	struct device_node *of_node = pdev->dev.of_node;
-	int rc;
+	int i, rc = 0;
 
-	cpr_vreg->vdd_apc = devm_regulator_get(&pdev->dev, "vdd-apc");
-	if (IS_ERR_OR_NULL(cpr_vreg->vdd_apc)) {
+	for (i = 0; i < ARRAY_SIZE(vdd_apc_name); i++) {
+		cpr_vreg->vdd_apc = devm_regulator_get(&pdev->dev,
+					vdd_apc_name[i]);
 		rc = PTR_RET(cpr_vreg->vdd_apc);
+		if (!IS_ERR_OR_NULL(cpr_vreg->vdd_apc))
+			break;
+	}
+
+	if (rc) {
 		if (rc != -EPROBE_DEFER)
 			pr_err("devm_regulator_get: rc=%d\n", rc);
 		return rc;
@@ -1252,11 +1273,23 @@ static int __devinit cpr_apc_init(struct platform_device *pdev,
 			pr_err("vdd-mx-vmin-method missing: rc=%d\n", rc);
 			return rc;
 		}
-		if (cpr_vreg->vdd_mx_vmin_method > VDD_MX_VMIN_MX_VMAX) {
+		if (cpr_vreg->vdd_mx_vmin_method > VDD_MX_VMIN_APC_CORNER_MAP) {
 			pr_err("Invalid vdd-mx-vmin-method(%d)\n",
 				cpr_vreg->vdd_mx_vmin_method);
 			return -EINVAL;
 		}
+
+		rc = of_property_read_u32_array(of_node,
+					"qcom,vdd-mx-corner-map",
+					&cpr_vreg->vdd_mx_corner_map[1],
+					CPR_FUSE_CORNER_MAX - 1);
+		if (rc && cpr_vreg->vdd_mx_vmin_method ==
+			VDD_MX_VMIN_APC_CORNER_MAP) {
+			pr_err("qcom,vdd-mx-corner-map missing: rc=%d\n",
+				rc);
+			return rc;
+		}
+
 	}
 
 	return 0;
@@ -1857,12 +1890,12 @@ static int __devinit cpr_efuse_init(struct platform_device *pdev,
 	cpr_vreg->efuse_addr = res->start;
 	len = res->end - res->start + 1;
 
-	pr_info("efuse_addr = 0x%x (len=0x%x)\n", res->start, len);
+	pr_info("efuse_addr = %pa (len=0x%x)\n", &res->start, len);
 
 	cpr_vreg->efuse_base = ioremap(cpr_vreg->efuse_addr, len);
 	if (!cpr_vreg->efuse_base) {
-		pr_err("Unable to map efuse_addr 0x%08x\n",
-				cpr_vreg->efuse_addr);
+		pr_err("Unable to map efuse_addr %pa\n",
+				&cpr_vreg->efuse_addr);
 		return -EINVAL;
 	}
 
@@ -1988,6 +2021,25 @@ static int __devinit cpr_voltage_plan_init(struct platform_device *pdev,
 	return 0;
 }
 
+static int cpr_mem_acc_init(struct platform_device *pdev,
+				struct cpr_regulator *cpr_vreg)
+{
+	int rc;
+
+	if (of_property_read_bool(pdev->dev.of_node, "mem-acc-supply")) {
+		cpr_vreg->mem_acc_vreg = devm_regulator_get(&pdev->dev,
+							"mem-acc");
+		if (IS_ERR_OR_NULL(cpr_vreg->mem_acc_vreg)) {
+			rc = PTR_RET(cpr_vreg->mem_acc_vreg);
+			if (rc != -EPROBE_DEFER)
+				pr_err("devm_regulator_get: mem-acc: rc=%d\n",
+				       rc);
+			return rc;
+		}
+	}
+	return 0;
+}
+
 static int __devinit cpr_regulator_probe(struct platform_device *pdev)
 {
 	struct cpr_regulator *cpr_vreg;
@@ -2016,6 +2068,12 @@ static int __devinit cpr_regulator_probe(struct platform_device *pdev)
 	if (!cpr_vreg) {
 		pr_err("Can't allocate cpr_regulator memory\n");
 		return -ENOMEM;
+	}
+
+	rc = cpr_mem_acc_init(pdev, cpr_vreg);
+	if (rc) {
+		pr_err("mem_acc intialization error rc=%d\n", rc);
+		return rc;
 	}
 
 	rc = cpr_efuse_init(pdev, cpr_vreg);

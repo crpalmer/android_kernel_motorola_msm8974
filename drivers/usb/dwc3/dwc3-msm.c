@@ -198,6 +198,8 @@ struct dwc3_msm {
 	struct clk		*sleep_clk;
 	struct clk		*hsphy_sleep_clk;
 	struct clk		*utmi_clk;
+	unsigned int		utmi_clk_rate;
+	struct clk		*utmi_clk_src;
 	struct regulator	*hsusb_3p3;
 	struct regulator	*hsusb_1p8;
 	struct regulator	*hsusb_vddcx;
@@ -1112,7 +1114,7 @@ void msm_dwc3_restart_usb_session(struct usb_gadget *gadget)
 	struct dwc3 *dwc = container_of(gadget, struct dwc3, gadget);
 	struct dwc3_msm *mdwc = dev_get_drvdata(dwc->dev->parent);
 
-	if (mdwc)
+	if (!mdwc)
 		return;
 
 	dev_dbg(mdwc->dev, "%s\n", __func__);
@@ -1466,6 +1468,48 @@ static void dwc3_msm_ss_phy_reg_init(struct dwc3_msm *mdwc)
 				0x07f03f07, 0x07f01605);
 }
 
+static void dwc3_msm_update_ref_clk(struct dwc3_msm *mdwc)
+{
+	u32 guctl, gfladj = 0;
+
+	guctl = dwc3_msm_read_reg(mdwc->base, DWC3_GUCTL);
+	guctl &= ~DWC3_GUCTL_REFCLKPER;
+
+	/* GFLADJ register is used starting with revision 2.50a */
+	if (dwc3_msm_read_reg(mdwc->base, DWC3_GSNPSID) >= DWC3_REVISION_250A) {
+		gfladj = dwc3_msm_read_reg(mdwc->base, DWC3_GFLADJ);
+		gfladj &= ~DWC3_GFLADJ_REFCLK_240MHZDECR_PLS1;
+		gfladj &= ~DWC3_GFLADJ_REFCLK_240MHZ_DECR;
+		gfladj &= ~DWC3_GFLADJ_REFCLK_LPM_SEL;
+		gfladj &= ~DWC3_GFLADJ_REFCLK_FLADJ;
+	}
+
+	/* Refer to SNPS Databook Table 6-55 for calculations used */
+	switch (mdwc->utmi_clk_rate) {
+	case 19200000:
+		guctl |= 52 << __ffs(DWC3_GUCTL_REFCLKPER);
+		gfladj |= 12 << __ffs(DWC3_GFLADJ_REFCLK_240MHZ_DECR);
+		gfladj |= DWC3_GFLADJ_REFCLK_240MHZDECR_PLS1;
+		gfladj |= DWC3_GFLADJ_REFCLK_LPM_SEL;
+		gfladj |= 200 << __ffs(DWC3_GFLADJ_REFCLK_FLADJ);
+		break;
+	case 24000000:
+		guctl |= 41 << __ffs(DWC3_GUCTL_REFCLKPER);
+		gfladj |= 10 << __ffs(DWC3_GFLADJ_REFCLK_240MHZ_DECR);
+		gfladj |= DWC3_GFLADJ_REFCLK_LPM_SEL;
+		gfladj |= 2032 << __ffs(DWC3_GFLADJ_REFCLK_FLADJ);
+		break;
+	default:
+		dev_warn(mdwc->dev, "Unsupported utmi_clk_rate: %u\n",
+				mdwc->utmi_clk_rate);
+		break;
+	}
+
+	dwc3_msm_write_reg(mdwc->base, DWC3_GUCTL, guctl);
+	if (gfladj)
+		dwc3_msm_write_reg(mdwc->base, DWC3_GFLADJ, gfladj);
+}
+
 /* Initialize QSCRATCH registers for HSPHY and SSPHY operation */
 static void dwc3_msm_qscratch_reg_init(struct dwc3_msm *mdwc,
 						unsigned event_status)
@@ -1550,6 +1594,7 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned event)
 				"DWC3_CONTROLLER_POST_RESET_EVENT received\n");
 		dwc3_msm_qscratch_reg_init(mdwc,
 					DWC3_CONTROLLER_POST_RESET_EVENT);
+		dwc3_msm_update_ref_clk(mdwc);
 		dwc->tx_fifo_size = mdwc->tx_fifo_size;
 		break;
 	case DWC3_CONTROLLER_POST_INITIALIZATION_EVENT:
@@ -2315,6 +2360,7 @@ get_prop_usbin_voltage_now(struct dwc3_msm *mdwc)
 	}
 }
 
+<<<<<<< HEAD
 static int
 get_prop_usbid_voltage_now(struct dwc3_msm *mdwc)
 {
@@ -2373,6 +2419,8 @@ reset_pin:
 	return id_voltage;
 }
 
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
@@ -2404,6 +2452,7 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = get_prop_usbin_voltage_now(mdwc);
 		break;
+<<<<<<< HEAD
 	case POWER_SUPPLY_PROP_POWER_NOW:
 		if (mdwc->hvdcp_chrg_mode == USB_REQUEST_MODE_5V) {
 			if (mdwc->hvdcp_chrg_stat ==
@@ -2433,6 +2482,8 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_LOW_POWER:
 		val->intval = atomic_read(&mdwc->in_lpm);
 		break;
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	default:
 		return -EINVAL;
 	}
@@ -2590,8 +2641,11 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_SCOPE,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+<<<<<<< HEAD
 	POWER_SUPPLY_PROP_POWER_NOW,
 	POWER_SUPPLY_PROP_LOW_POWER,
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 };
 
 static void dwc3_init_adc_work(struct work_struct *w);
@@ -2871,6 +2925,7 @@ dwc3_msm_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
+<<<<<<< HEAD
 
 		if (mdwc->hvdcp_failures >= DWC3_HVDCP_MAX_FAILURES) {
 			pr_err("%s: too many voltage request failures\n",
@@ -2892,6 +2947,12 @@ dwc3_msm_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		power_supply_changed(&mdwc->usb_psy);
 
+=======
+		if (val == USB_REQUEST_5V)
+			pr_debug("%s:voting 5V voltage request\n", __func__);
+		else if (val == USB_REQUEST_9V)
+			pr_debug("%s:voting 9V voltage request\n", __func__);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		break;
 	case MSM_USB_EXT_CHG_RESULT:
 		if (get_user(val, (int __user *)arg)) {
@@ -2900,6 +2961,7 @@ dwc3_msm_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
+<<<<<<< HEAD
 		if (!val) {
 			pr_info("%s:voltage request successful\n", __func__);
 			mdwc->hvdcp_chrg_stat = USB_REQUEST_STAT_SUCCESS;
@@ -2911,6 +2973,24 @@ dwc3_msm_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		power_supply_changed(&mdwc->usb_psy);
 
+=======
+		if (!val)
+			pr_debug("%s:voltage request successful\n", __func__);
+		else
+			pr_debug("%s:voltage request failed\n", __func__);
+		break;
+	case MSM_USB_EXT_CHG_TYPE:
+		if (get_user(val, (int __user *)arg)) {
+			pr_err("%s: get_user failed\n\n", __func__);
+			ret = -EFAULT;
+			break;
+		}
+
+		if (val)
+			pr_debug("%s:charger is external charger\n", __func__);
+		else
+			pr_debug("%s:charger is not ext charger\n", __func__);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		break;
 	default:
 		ret = -EINVAL;
@@ -3090,11 +3170,35 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	}
 	clk_prepare_enable(mdwc->hsphy_sleep_clk);
 
+	ret = of_property_read_u32(node, "qcom,utmi-clk-rate",
+				   (u32 *)&mdwc->utmi_clk_rate);
+	if (ret)
+		mdwc->utmi_clk_rate = 60000000;
+
 	mdwc->utmi_clk = devm_clk_get(&pdev->dev, "utmi_clk");
 	if (IS_ERR(mdwc->utmi_clk)) {
 		dev_err(&pdev->dev, "failed to get utmi_clk\n");
 		ret = PTR_ERR(mdwc->utmi_clk);
 		goto disable_sleep_a_clk;
+	}
+
+	if (mdwc->utmi_clk_rate == 24000000) {
+		/*
+		 * For setting utmi clock to 24MHz, first set 48MHz on parent
+		 * clock "utmi_clk_src" and then set divider 2 on child branch
+		 * "utmi_clk".
+		 */
+		mdwc->utmi_clk_src = devm_clk_get(&pdev->dev, "utmi_clk_src");
+		if (IS_ERR(mdwc->utmi_clk_src)) {
+			dev_err(&pdev->dev, "failed to get utmi_clk_src\n");
+			ret = PTR_ERR(mdwc->utmi_clk_src);
+			goto disable_sleep_a_clk;
+		}
+		clk_set_rate(mdwc->utmi_clk_src, 48000000);
+		/* 1 means divide utmi_clk_src by 2 */
+		clk_set_rate(mdwc->utmi_clk, 1);
+	} else {
+		clk_set_rate(mdwc->utmi_clk, mdwc->utmi_clk_rate);
 	}
 	clk_prepare_enable(mdwc->utmi_clk);
 
