@@ -72,6 +72,15 @@
 
 &usb3 {
 	qcom,usbin-vadc = <&pm8941_vadc>;
+<<<<<<< HEAD
+=======
+	qcom,utmi-clk-rate = <24000000>;
+};
+
+&ehci {
+	hsusb_vdd_dig-supply = <&pm8841_s2_corner>;
+	qcom,vdd-voltage-level = <1 2 3 5 7>;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 };
 
 &krait_regulator_pmic {

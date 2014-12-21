@@ -401,6 +401,11 @@ static void diag_send_ctrl_msg(struct diag_smd_info *smd_info,
 	} else {
 		pr_err("diag: ch invalid on proc %d\n", smd_info->peripheral);
 	}
+<<<<<<< HEAD
+=======
+
+	mutex_unlock(&driver->diag_cntl_mutex);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 }
 
 int diag_send_stm_state(struct diag_smd_info *smd_info,

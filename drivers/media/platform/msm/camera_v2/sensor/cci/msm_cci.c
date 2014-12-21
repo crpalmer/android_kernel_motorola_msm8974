@@ -217,8 +217,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 			cmd_size, i2c_cmd->reg_addr, i2c_cmd->reg_data);
 		delay = i2c_cmd->delay;
 		data[i++] = CCI_I2C_WRITE_CMD;
-		if (i2c_cmd->reg_addr)
-			reg_addr = i2c_cmd->reg_addr;
+		reg_addr = i2c_cmd->reg_addr;
 		/* either byte or word addr */
 		if (i2c_msg->addr_type == MSM_CAMERA_I2C_BYTE_ADDR)
 			data[i++] = reg_addr;
@@ -227,22 +226,21 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 			data[i++] = reg_addr & 0x00FF;
 		}
 		/* max of 10 data bytes */
-		do {
-			if (i2c_msg->data_type == MSM_CAMERA_I2C_BYTE_DATA) {
-				data[i++] = i2c_cmd->reg_data;
-				reg_addr++;
-			} else {
-				if ((i + 1) <= 10) {
-					data[i++] = (i2c_cmd->reg_data &
-						0xFF00) >> 8; /* MSB */
-					data[i++] = i2c_cmd->reg_data &
-						0x00FF; /* LSB */
-					reg_addr += 2;
-				} else
-					break;
-			}
-			i2c_cmd++;
-		} while (--cmd_size && !i2c_cmd->reg_addr && (i <= 10));
+		if (i2c_msg->data_type == MSM_CAMERA_I2C_BYTE_DATA) {
+			data[i++] = i2c_cmd->reg_data;
+			reg_addr++;
+		} else {
+			if ((i + 1) <= 10) {
+				data[i++] = (i2c_cmd->reg_data &
+					0xFF00) >> 8; /* MSB */
+				data[i++] = i2c_cmd->reg_data &
+					0x00FF; /* LSB */
+				reg_addr += 2;
+			} else
+				break;
+		}
+		i2c_cmd++;
+		--cmd_size;
 		data[0] |= ((i-1) << 4);
 		len = ((i-1)/4) + 1;
 		rc = msm_cci_validate_queue(cci_dev, len, master, queue);
@@ -1170,7 +1168,7 @@ static int __devinit msm_cci_probe(struct platform_device *pdev)
 {
 	struct cci_device *new_cci_dev;
 	int rc = 0;
-	pr_err("%s: pdev %p device id = %d\n", __func__, pdev, pdev->id);
+	CDBG("%s: pdev %p device id = %d\n", __func__, pdev, pdev->id);
 	new_cci_dev = kzalloc(sizeof(struct cci_device), GFP_KERNEL);
 	if (!new_cci_dev) {
 		CDBG("%s: no enough memory\n", __func__);

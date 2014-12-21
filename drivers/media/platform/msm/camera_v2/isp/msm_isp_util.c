@@ -130,7 +130,10 @@ int msm_isp_update_bandwidth(enum msm_isp_hw_client client,
 	mutex_lock(&bandwidth_mgr_mutex);
 	if (!isp_bandwidth_mgr.use_count ||
 		!isp_bandwidth_mgr.bus_client) {
-		pr_err("%s: bandwidth manager inactive\n", __func__);
+		pr_err("%s:error bandwidth manager inactive use_cnt:%d bus_clnt:%d\n",
+			__func__, isp_bandwidth_mgr.use_count,
+			isp_bandwidth_mgr.bus_client);
+		mutex_unlock(&bandwidth_mgr_mutex);
 		return -EINVAL;
 	}
 
@@ -166,8 +169,11 @@ void msm_isp_deinit_bandwidth_mgr(enum msm_isp_hw_client client)
 		return;
 	}
 
-	if (!isp_bandwidth_mgr.bus_client)
+	if (!isp_bandwidth_mgr.bus_client) {
+		pr_err("%s:%d error: bus client invalid\n", __func__, __LINE__);
+		mutex_unlock(&bandwidth_mgr_mutex);
 		return;
+	}
 
 	msm_bus_scale_client_update_request(
 	   isp_bandwidth_mgr.bus_client, 0);
@@ -478,7 +484,7 @@ long msm_isp_ioctl(struct v4l2_subdev *sd,
 		break;
 
 	default:
-		pr_err("%s: Invalid ISP command\n", __func__);
+		pr_err_ratelimited("%s: Invalid ISP command\n", __func__);
 		rc = -EINVAL;
 	}
 	return rc;
@@ -631,6 +637,33 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 		}
 		break;
 	}
+	case VFE_HW_UPDATE_LOCK: {
+		uint32_t update_id =
+			vfe_dev->axi_data.src_info[VFE_PIX_0].last_updt_frm_id;
+		if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id != *cfg_data
+			|| update_id == *cfg_data) {
+			pr_err("hw update lock failed,acquire id %u\n",
+				*cfg_data);
+			pr_err("hw update lock failed,current id %lu\n",
+				vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id);
+			pr_err("hw update lock failed,last id %u\n",
+				update_id);
+			return -EINVAL;
+		}
+		break;
+	}
+	case VFE_HW_UPDATE_UNLOCK: {
+		if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id
+			!= *cfg_data) {
+			pr_err("hw update across frame boundary,begin id %u\n",
+				*cfg_data);
+			pr_err("hw update across frame boundary,end id %lu\n",
+				vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id);
+			vfe_dev->axi_data.src_info[VFE_PIX_0].last_updt_frm_id =
+			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
+		}
+		break;
+	}
 	case VFE_READ: {
 		int i;
 		uint32_t *data_ptr = cfg_data +
@@ -666,6 +699,10 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 			pr_err("%s:%d failed: rc %d\n", __func__, __LINE__, rc);
 			return -EINVAL;
 		}
+		break;
+	}
+	case SET_WM_UB_SIZE: {
+		vfe_dev->vfe_ub_size = *cfg_data;
 		break;
 	}
 	}
@@ -720,7 +757,7 @@ int msm_isp_proc_cmd(struct vfe_device *vfe_dev, void *arg)
 	}
 
 	for (i = 0; i < proc_cmd->num_cfg; i++)
-		msm_isp_send_hw_cmd(vfe_dev, &reg_cfg_cmd[i],
+		rc = msm_isp_send_hw_cmd(vfe_dev, &reg_cfg_cmd[i],
 			cfg_data, proc_cmd->cmd_len);
 
 	if (copy_to_user(proc_cmd->cfg_data,
@@ -801,6 +838,12 @@ int msm_isp_cal_word_per_line(uint32_t output_format,
 	case V4L2_PIX_FMT_NV16:
 	case V4L2_PIX_FMT_NV61:
 		val = CAL_WORD(pixel_per_line, 1, 8);
+		break;
+	case V4L2_PIX_FMT_YUYV:
+	case V4L2_PIX_FMT_YVYU:
+	case V4L2_PIX_FMT_UYVY:
+	case V4L2_PIX_FMT_VYUY:
+		val = CAL_WORD(pixel_per_line, 2, 8);
 		break;
 		/*TD: Add more image format*/
 	default:
@@ -1104,6 +1147,14 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 
 	vfe_dev->hw_info->vfe_ops.irq_ops.
 		read_irq_status(vfe_dev, &irq_status0, &irq_status1);
+<<<<<<< HEAD
+=======
+	if ((irq_status0 == 0) && (irq_status1 == 0)) {
+		pr_err_ratelimited("%s: irq_status0 & 1 are both 0\n",
+			__func__);
+		return IRQ_HANDLED;
+	}
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	msm_isp_process_overflow_irq(vfe_dev,
 		&irq_status0, &irq_status1);
 	vfe_dev->hw_info->vfe_ops.core_ops.
@@ -1119,7 +1170,7 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 	if ((irq_status0 == 0) && (irq_status1 == 0) &&
 		(!((error_mask0 != 0) || (error_mask1 != 0)) &&
 		 vfe_dev->error_info.error_count == 1)) {
-		ISP_DBG("%s: irq_status0 & 1 are both 0!\n", __func__);
+		ISP_DBG("%s: error_mask0/1 & error_count are set!\n", __func__);
 		return IRQ_HANDLED;
 	}
 
@@ -1172,7 +1223,11 @@ void msm_isp_do_tasklet(unsigned long data)
 		spin_unlock_irqrestore(&vfe_dev->tasklet_lock, flags);
 		if (atomic_read(&vfe_dev->error_info.overflow_state) !=
 			NO_OVERFLOW) {
+<<<<<<< HEAD
 			pr_err("There is Overflow, kicking up recovery !!!!");
+=======
+			pr_err_ratelimited("There is Overflow, kicking up recovery !!!!");
+>>>>>>> caf/LA.BF.1.1_rb1.9
 			msm_isp_process_overflow_recovery(vfe_dev,
 				irq_status0, irq_status1);
 			continue;

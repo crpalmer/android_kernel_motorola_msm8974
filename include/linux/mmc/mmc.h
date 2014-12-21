@@ -303,7 +303,11 @@ struct _mmc_csd {
 #define EXT_CSD_REV			192	/* RO */
 #define EXT_CSD_STRUCTURE		194	/* RO */
 #define EXT_CSD_CARD_TYPE		196	/* RO */
+<<<<<<< HEAD
 #define EXT_CSD_DRIVER_STRENGTH		197	/* RO */
+=======
+#define EXT_CSD_DRIVE_STRENGTH		197	/* RO */
+>>>>>>> caf/LA.BF.1.1_rb1.9
 #define EXT_CSD_OUT_OF_INTERRUPT_TIME	198	/* RO */
 #define EXT_CSD_PART_SWITCH_TIME        199     /* RO */
 #define EXT_CSD_PWR_CL_52_195		200	/* RO */
@@ -331,6 +335,7 @@ struct _mmc_csd {
 #define EXT_CSD_GENERIC_CMD6_TIME	248	/* RO */
 #define EXT_CSD_CACHE_SIZE		249	/* RO, 4 bytes */
 #define EXT_CSD_PWR_CL_DDR_200_360	253	/* RO */
+<<<<<<< HEAD
 #define EXT_CSD_FIRMWARE_VERSION	254	/* RO, 8 bytes */
 #define EXT_CSD_DEVICE_VERSION		262	/* RO, 2 bytes */
 #define EXT_CSD_OPTIMAL_TRIM_UNIT_SIZE	264	/* RO */
@@ -340,6 +345,8 @@ struct _mmc_csd {
 #define EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A 268	/* RO */
 #define EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B 269	/* RO */
 #define EXT_CSD_VENDOR_PROPRIETARY_HEALTH_REPORT 270	/* RO, 32 bytes */
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 #define EXT_CSD_TAG_UNIT_SIZE		498	/* RO */
 #define EXT_CSD_DATA_TAG_SUPPORT	499	/* RO */
 #define EXT_CSD_MAX_PACKED_WRITES	500	/* RO */

@@ -198,6 +198,12 @@ struct mmc_hotplug {
 	void *handler_priv;
 };
 
+enum dev_state {
+	DEV_SUSPENDING = 1,
+	DEV_SUSPENDED,
+	DEV_RESUMED,
+};
+
 struct mmc_host {
 	struct device		*parent;
 	struct device		class_dev;
@@ -451,10 +457,14 @@ struct mmc_host {
 		struct delayed_work work;
 		enum mmc_load	state;
 	} clk_scaling;
+<<<<<<< HEAD
 
 	unsigned long long	requests;	/* cumulative number of requests */
 	unsigned long long	request_errors;	/* cumulative number of request errors */
 
+=======
+	enum dev_state dev_status;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	unsigned long		private[0] ____cacheline_aligned;
 };
 

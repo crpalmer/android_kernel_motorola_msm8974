@@ -1,0 +1,16 @@
+Apply this by hand to mdss_mdp_splash_cleanup
+
+commit 8398f44ac904fa8186952054f0ed0ae9231d7c73
+Author: Zac Crosby <zac@motorola.com>
+Date:   Thu Mar 27 18:05:21 2014 -0500
+
+    msm: mdss: Prevent solid fill on smooth transition
+
+Verify that I didn't partially undo this:
+
+commit cffcd814e792afeea7b73adff77b4699a44a7da6
+Author: Jared Suttles <jsuttles@motorola.com>
+Date:   Thu May 15 15:03:37 2014 -0500
+
+    msm: mdss: remove runtime power management
+

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -559,6 +559,7 @@ static struct pll_freq_tbl apcs_pll_freq[] = {
 	F_APCS_PLL( 768000000, 40, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL( 787200000, 41, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL( 998400000, 52, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1094400000, 57, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1190400000, 62, 0x0, 0x1, 0x0, 0x0, 0x0),
 	PLL_F_END
 };
@@ -3025,16 +3026,20 @@ static struct clk_lookup msm_clocks_8610[] = {
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006c"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006f"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0034"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0001"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-007d"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006d"),
+	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "6-0002"),
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "6-0078"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0020"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006a"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006c"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006f"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0034"),
+	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0001"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-007d"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006d"),
+	CLK_LOOKUP("cam_clk", mclk1_clk.c, "6-0002"),
 	CLK_LOOKUP("cam_clk", mclk1_clk.c, "6-0078"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0020"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006a"),

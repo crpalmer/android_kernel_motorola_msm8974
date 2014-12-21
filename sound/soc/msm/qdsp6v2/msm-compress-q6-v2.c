@@ -128,6 +128,11 @@ struct msm_compr_audio {
 	uint32_t drain_ready;
 	uint32_t stream_available;
 	uint32_t next_stream;
+<<<<<<< HEAD
+=======
+
+	uint64_t marker_timestamp;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 	struct msm_compr_gapless_state gapless_state;
 
@@ -167,14 +172,41 @@ static int msm_compr_set_volume(struct snd_compr_stream *cstream,
 
 	pr_debug("%s: volume_l %d volume_r %d\n",
 		__func__, volume_l, volume_r);
+	if (!cstream || !cstream->runtime) {
+		pr_err("%s: session not active\n", __func__);
+		return -EPERM;
+	}
 	prtd = cstream->runtime->private_data;
 	if (prtd && prtd->audio_client) {
 		if (volume_l != volume_r) {
 			pr_debug("%s: call q6asm_set_lrgain\n", __func__);
 			rc = q6asm_set_lrgain(prtd->audio_client,
 						volume_l, volume_r);
+			if (rc < 0) {
+				pr_err("%s: set lrgain command failed rc=%d\n",
+				__func__, rc);
+				return rc;
+			}
+			/*
+			 * set master gain to unity so that only lr gain
+			 * is effective
+			 */
+			rc = q6asm_set_volume(prtd->audio_client,
+						COMPRESSED_LR_VOL_MAX_STEPS);
 		} else {
 			pr_debug("%s: call q6asm_set_volume\n", __func__);
+			/*
+			 * set left and right channel gain to unity so that
+			 * only master gain is effective
+			 */
+			rc = q6asm_set_lrgain(prtd->audio_client,
+						COMPRESSED_LR_VOL_MAX_STEPS,
+						COMPRESSED_LR_VOL_MAX_STEPS);
+			if (rc < 0) {
+				pr_err("%s: set lrgain command failed rc=%d\n",
+				__func__, rc);
+				return rc;
+			}
 			rc = q6asm_set_volume(prtd->audio_client, volume_l);
 		}
 		if (rc < 0) {
@@ -472,11 +504,12 @@ static void populate_codec_list(struct msm_compr_audio *prtd)
 			COMPR_PLAYBACK_MIN_NUM_FRAGMENTS;
 	prtd->compr_cap.max_fragments =
 			COMPR_PLAYBACK_MAX_NUM_FRAGMENTS;
-	prtd->compr_cap.num_codecs = 4;
+	prtd->compr_cap.num_codecs = 5;
 	prtd->compr_cap.codecs[0] = SND_AUDIOCODEC_MP3;
 	prtd->compr_cap.codecs[1] = SND_AUDIOCODEC_AAC;
 	prtd->compr_cap.codecs[2] = SND_AUDIOCODEC_AC3;
 	prtd->compr_cap.codecs[3] = SND_AUDIOCODEC_EAC3;
+	prtd->compr_cap.codecs[4] = SND_AUDIOCODEC_PCM;
 }
 
 static int msm_compr_send_media_format_block(struct snd_compr_stream *cstream,
@@ -486,15 +519,33 @@ static int msm_compr_send_media_format_block(struct snd_compr_stream *cstream,
 	struct msm_compr_audio *prtd = runtime->private_data;
 	struct asm_aac_cfg aac_cfg;
 	int ret = 0;
+	uint16_t bit_width = 16;
 
 	switch (prtd->codec) {
+	case FORMAT_LINEAR_PCM:
+		pr_debug("SND_AUDIOCODEC_PCM\n");
+		if (prtd->codec_param.codec.format == SNDRV_PCM_FORMAT_S24_LE)
+			bit_width = 24;
+		ret = q6asm_media_format_block_pcm_format_support(
+							prtd->audio_client,
+							prtd->sample_rate,
+							prtd->num_channels,
+							bit_width);
+		if (ret < 0)
+			pr_err("%s: CMD Format block failed\n", __func__);
+
+		break;
 	case FORMAT_MP3:
 		/* no media format block needed */
 		break;
 	case FORMAT_MPEG4_AAC:
 		memset(&aac_cfg, 0x0, sizeof(struct asm_aac_cfg));
 		aac_cfg.aot = AAC_ENC_MODE_EAAC_P;
-		aac_cfg.format = 0x03;
+		if (prtd->codec_param.codec.format ==
+					SND_AUDIOSTREAMFORMAT_MP4ADTS)
+			aac_cfg.format = 0x0;
+		else
+			aac_cfg.format = 0x03;
 		aac_cfg.ch_cfg = prtd->num_channels;
 		aac_cfg.sample_rate = prtd->sample_rate;
 		ret = q6asm_stream_media_format_block_aac(prtd->audio_client,
@@ -522,12 +573,15 @@ static int msm_compr_configure_dsp(struct snd_compr_stream *cstream)
 	int dir = IN, ret = 0;
 	struct audio_client *ac = prtd->audio_client;
 	uint32_t stream_index;
+<<<<<<< HEAD
 	struct asm_softpause_params softpause = {
 		.enable = SOFT_PAUSE_ENABLE,
 		.period = SOFT_PAUSE_PERIOD,
 		.step = SOFT_PAUSE_STEP,
 		.rampingcurve = SOFT_PAUSE_CURVE_LINEAR,
 	};
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	struct asm_softvolume_params softvol = {
 		.period = SOFT_VOLUME_PERIOD,
 		.step = SOFT_VOLUME_STEP,
@@ -557,14 +611,15 @@ static int msm_compr_configure_dsp(struct snd_compr_stream *cstream)
 				prtd->session_id,
 				SNDRV_PCM_STREAM_PLAYBACK);
 
+	/*
+	 * Setting the master volume gain to 0 while
+	 * configuring ASM session. This is to address
+	 * DSP pop noise issue where. This change is
+	 * there from begining may be DSP limitation
+	 */
 	ret = msm_compr_set_volume(cstream, 0, 0);
 	if (ret < 0)
 		pr_err("%s : Set Volume failed : %d", __func__, ret);
-
-	ret = q6asm_set_softpause(ac, &softpause);
-	if (ret < 0)
-		pr_err("%s: Send SoftPause Param failed ret=%d\n",
-			__func__, ret);
 
 	ret = q6asm_set_softvolume(ac, &softvol);
 	if (ret < 0)
@@ -627,6 +682,17 @@ static int msm_compr_open(struct snd_compr_stream *cstream)
 		 kzalloc(sizeof(struct msm_compr_audio_effects), GFP_KERNEL);
 	if (!pdata->audio_effects[rtd->dai_link->be_id]) {
 		pr_err("%s: Could not allocate memory for effects\n", __func__);
+		pdata->cstream[rtd->dai_link->be_id] = NULL;
+		kfree(prtd);
+		return -ENOMEM;
+	}
+	pdata->dec_params[rtd->dai_link->be_id] =
+		 kzalloc(sizeof(struct msm_compr_dec_params), GFP_KERNEL);
+	if (!pdata->dec_params[rtd->dai_link->be_id]) {
+		pr_err("%s: Could not allocate memory for dec params\n",
+			__func__);
+		kfree(pdata->audio_effects[rtd->dai_link->be_id]);
+		pdata->cstream[rtd->dai_link->be_id] = NULL;
 		kfree(prtd);
 		return -ENOMEM;
 	}
@@ -644,6 +710,10 @@ static int msm_compr_open(struct snd_compr_stream *cstream)
 		pr_err("%s: Could not allocate memory for client\n", __func__);
 		kfree(pdata->audio_effects[rtd->dai_link->be_id]);
 		kfree(pdata->dec_params[rtd->dai_link->be_id]);
+<<<<<<< HEAD
+=======
+		pdata->cstream[rtd->dai_link->be_id] = NULL;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 		kfree(prtd);
 		return -ENOMEM;
 	}
@@ -824,6 +894,12 @@ static int msm_compr_set_params(struct snd_compr_stream *cstream,
 	pr_debug("%s: sample_rate %d\n", __func__, prtd->sample_rate);
 
 	switch (params->codec.id) {
+	case SND_AUDIOCODEC_PCM: {
+		pr_debug("SND_AUDIOCODEC_PCM\n");
+		prtd->codec = FORMAT_LINEAR_PCM;
+		break;
+	}
+
 	case SND_AUDIOCODEC_MP3: {
 		pr_debug("SND_AUDIOCODEC_MP3\n");
 		prtd->codec = FORMAT_MP3;
@@ -1023,6 +1099,10 @@ static int msm_compr_trigger(struct snd_compr_stream *cstream, int cmd)
 		prtd->app_pointer  = 0;
 		prtd->bytes_received = 0;
 		prtd->bytes_sent = 0;
+<<<<<<< HEAD
+=======
+		prtd->marker_timestamp = 0;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 		atomic_set(&prtd->xrun, 0);
 		spin_unlock_irqrestore(&prtd->lock, flags);
@@ -1155,6 +1235,8 @@ static int msm_compr_trigger(struct snd_compr_stream *cstream, int cmd)
 			prtd->first_buffer = 1;
 			prtd->last_buffer = 0;
 			prtd->gapless_state.gapless_transition = 1;
+			prtd->marker_timestamp = 0;
+
 			/*
 			Don't reset these as these vars map to
 			total_bytes_transferred and total_bytes_available
@@ -1210,14 +1292,23 @@ static int msm_compr_trigger(struct snd_compr_stream *cstream, int cmd)
 			q6asm_stream_cmd_nowait(ac, CMD_PAUSE, ac->stream_id);
 			prtd->cmd_ack = 0;
 			spin_unlock_irqrestore(&prtd->lock, flags);
+<<<<<<< HEAD
 			pr_debug("%s:issue CMD_FLUSH ac->stream_id %d",
 					      __func__, ac->stream_id);
 			q6asm_stream_cmd(ac, CMD_FLUSH, ac->stream_id);
 			wait_event_timeout(prtd->flush_wait,
 					   prtd->cmd_ack, 1 * HZ / 4);
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
+			/*
+			 * Cache this time as last known time
+			 */
+			q6asm_get_session_time(prtd->audio_client,
+					       &prtd->marker_timestamp);
 			spin_lock_irqsave(&prtd->lock, flags);
 			/*
+<<<<<<< HEAD
 			Don't reset these as these vars map to
 			total_bytes_transferred and total_bytes_available
 			directly, only total_bytes_transferred will be updated
@@ -1227,6 +1318,17 @@ static int msm_compr_trigger(struct snd_compr_stream *cstream, int cmd)
 			do not reset prtd->bytes_sent as well as the same
 			session is used for gapless playback
 			*/
+=======
+			 * Don't reset these as these vars map to
+			 * total_bytes_transferred and total_bytes_available.
+			 * Just total_bytes_transferred will be updated
+			 * in the next avail() ioctl.
+			 * prtd->copied_total = 0;
+			 * prtd->bytes_received = 0;
+			 * do not reset prtd->bytes_sent as well as the same
+			 * session is used for gapless playback
+			 */
+>>>>>>> caf/LA.BF.1.1_rb1.9
 			prtd->byte_offset = 0;
 
 			prtd->app_pointer  = 0;
@@ -1234,8 +1336,15 @@ static int msm_compr_trigger(struct snd_compr_stream *cstream, int cmd)
 			prtd->last_buffer = 0;
 			atomic_set(&prtd->drain, 0);
 			atomic_set(&prtd->xrun, 1);
-			q6asm_run_nowait(prtd->audio_client, 0, 0, 0);
 			spin_unlock_irqrestore(&prtd->lock, flags);
+
+			pr_debug("%s:issue CMD_FLUSH ac->stream_id %d",
+					      __func__, ac->stream_id);
+			q6asm_stream_cmd(ac, CMD_FLUSH, ac->stream_id);
+			wait_event_timeout(prtd->flush_wait,
+					   prtd->cmd_ack, 1 * HZ / 4);
+
+			q6asm_run_nowait(prtd->audio_client, 0, 0, 0);
 		}
 		prtd->cmd_interrupt = 0;
 		break;
@@ -1363,6 +1472,8 @@ static int msm_compr_pointer(struct snd_compr_stream *cstream,
 				__func__, timestamp);
 			return -EAGAIN;
 		}
+	} else {
+		timestamp = prtd->marker_timestamp;
 	}
 
 	/* DSP returns timestamp in usec */

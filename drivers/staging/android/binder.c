@@ -1640,7 +1640,11 @@ static void binder_transaction(struct binder_proc *proc,
 		if (*offp > t->buffer->data_size - sizeof(*fp) ||
 		    *offp < off_min ||
 		    t->buffer->data_size < sizeof(*fp) ||
+<<<<<<< HEAD
 		    !IS_ALIGNED(*offp, sizeof(void *))) {
+=======
+		    !IS_ALIGNED(*offp, sizeof(u32))) {
+>>>>>>> caf/LA.BF.1.1_rb1.9
 			binder_user_error("%d:%d got transaction with invalid offset, %lld (min %lld, max %lld)\n",
 					  proc->pid, thread->pid, (u64)*offp,
 					  (u64)off_min,
@@ -2958,9 +2962,15 @@ static void binder_vma_close(struct vm_area_struct *vma)
 	binder_defer_work(proc, BINDER_DEFERRED_PUT_FILES);
 }
 
+static int binder_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+{
+	return VM_FAULT_SIGBUS;
+}
+
 static struct vm_operations_struct binder_vm_ops = {
 	.open = binder_vma_open,
 	.close = binder_vma_close,
+	.fault = binder_vm_fault,
 };
 
 static int binder_mmap(struct file *filp, struct vm_area_struct *vma)

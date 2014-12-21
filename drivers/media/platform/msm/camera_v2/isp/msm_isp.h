@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,7 +24,6 @@
 #include <media/msmb_isp.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
-
 #include "msm_buf_mgr.h"
 
 #define MAX_IOMMU_CTX 2
@@ -330,6 +329,7 @@ struct msm_vfe_src_info {
 	uint32_t width;
 	long pixel_clock;
 	uint32_t input_format;/*V4L2 pix format with bayer pattern*/
+	uint32_t last_updt_frm_id;
 };
 
 enum msm_wm_ub_cfg_type {
@@ -355,6 +355,7 @@ struct msm_vfe_axi_shared_data {
 	struct msm_vfe_src_info src_info[VFE_SRC_MAX];
 	uint16_t stream_handle_cnt;
 	unsigned long event_mask;
+	uint32_t burst_len;
 };
 
 struct msm_vfe_stats_hardware_info {
@@ -397,6 +398,10 @@ struct msm_vfe_stats_shared_data {
 	uint16_t stream_handle_cnt;
 	atomic_t stats_update;
 	uint32_t stats_mask;
+<<<<<<< HEAD
+=======
+	uint32_t stats_burst_len;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 };
 
 struct msm_vfe_tasklet_queue_cmd {
@@ -421,6 +426,29 @@ struct msm_vfe_error_info {
 	uint32_t stats_framedrop_count[MSM_ISP_STATS_MAX];
 	uint32_t info_dump_frame_count;
 	uint32_t error_count;
+};
+
+struct msm_vfe_frame_ts {
+	struct timeval buf_time;
+	uint32_t frame_id;
+};
+
+struct msm_isp_statistics {
+	int32_t imagemaster0_overflow;
+	int32_t imagemaster1_overflow;
+	int32_t imagemaster2_overflow;
+	int32_t imagemaster3_overflow;
+	int32_t imagemaster4_overflow;
+	int32_t imagemaster5_overflow;
+	int32_t imagemaster6_overflow;
+	int32_t be_overflow;
+	int32_t bg_overflow;
+	int32_t bf_overflow;
+	int32_t awb_overflow;
+	int32_t rs_overflow;
+	int32_t cs_overflow;
+	int32_t ihist_overflow;
+	int32_t skinbhist_overflow;
 };
 
 struct vfe_device {
@@ -457,14 +485,14 @@ struct vfe_device {
 	struct list_head tasklet_q;
 	struct tasklet_struct vfe_tasklet;
 	struct msm_vfe_tasklet_queue_cmd
-		tasklet_queue_cmd[MSM_VFE_TASKLETQ_SIZE];
-
+	tasklet_queue_cmd[MSM_VFE_TASKLETQ_SIZE];
 	uint32_t soc_hw_version;
 	uint32_t vfe_hw_version;
 	struct msm_vfe_hardware_info *hw_info;
 	struct msm_vfe_axi_shared_data axi_data;
 	struct msm_vfe_stats_shared_data stats_data;
 	struct msm_vfe_error_info error_info;
+	struct msm_vfe_frame_ts frame_ts;
 	struct msm_isp_buf_mgr *buf_mgr;
 	int dump_reg;
 	int vfe_clk_idx;
@@ -473,6 +501,11 @@ struct vfe_device {
 	void __iomem *p_avtimer_msw;
 	void __iomem *p_avtimer_lsw;
 	uint8_t ignore_error;
+<<<<<<< HEAD
+=======
+	struct msm_isp_statistics *stats;
+	uint32_t vfe_ub_size;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 };
 
 #endif

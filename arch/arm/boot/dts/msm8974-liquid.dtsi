@@ -445,6 +445,11 @@
                 qcom,msm-bus,name = "wlan_sdio";
                 qca,wifi-chip-pwd-supply = <&ath_chip_pwd_l>;
         };
+<<<<<<< HEAD
+=======
+
+};
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 };
 

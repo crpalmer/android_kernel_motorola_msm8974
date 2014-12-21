@@ -8,6 +8,7 @@
 
 #define USB_REQUEST_5V		1
 #define USB_REQUEST_9V		2
+<<<<<<< HEAD
 
 enum usb_mode_req {
 	USB_REQUEST_MODE_NONE = 0,
@@ -22,6 +23,8 @@ enum usb_mode_stat {
 	USB_REQUEST_STAT_PENDING = 0xFF,
 };
 
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 /**
  * struct msm_usb_chg_info - MSM USB charger block details.
  * @chg_block_type: The type of charger block. QSCRATCH/ULPI.
@@ -50,4 +53,10 @@ struct msm_usb_chg_info {
 /* To tell kernel about voltage request result */
 #define MSM_USB_EXT_CHG_RESULT _IOW('M', 3, int)
 
+<<<<<<< HEAD
+=======
+/* To tell kernel whether charger connected is external charger or not */
+#define MSM_USB_EXT_CHG_TYPE _IOW('M', 4, int)
+
+>>>>>>> caf/LA.BF.1.1_rb1.9
 #endif /* __LINUX_USB_MSM_EXT_CHG_H */

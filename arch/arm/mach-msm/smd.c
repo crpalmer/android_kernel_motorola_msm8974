@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/smd.c
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1149,6 +1149,7 @@ static unsigned ch_write_buffer(struct smd_channel *ch, void **ptr)
 	unsigned head = ch->half_ch->get_head(ch->send);
 	unsigned tail = ch->half_ch->get_tail(ch->send);
 	unsigned fifo_size = ch->fifo_size;
+<<<<<<< HEAD
 
 	BUG_ON(fifo_size >= SZ_1M);
 	BUG_ON(head >= fifo_size);
@@ -1156,6 +1157,15 @@ static unsigned ch_write_buffer(struct smd_channel *ch, void **ptr)
 	BUG_ON(OVERFLOW_ADD_UNSIGNED(uintptr_t, (uintptr_t)ch->send_data,
 								head));
 
+=======
+
+	BUG_ON(fifo_size >= SZ_1M);
+	BUG_ON(head >= fifo_size);
+	BUG_ON(tail >= fifo_size);
+	BUG_ON(OVERFLOW_ADD_UNSIGNED(uintptr_t, (uintptr_t)ch->send_data,
+								head));
+
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	*ptr = (void *) (ch->send_data + head);
 	if (head < tail) {
 		return tail - head - SMD_FIFO_FULL_RESERVE;
@@ -3345,13 +3355,13 @@ int __init msm_smd_init(void)
 	if (registered)
 		return 0;
 
-	smd_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smd");
+	smd_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smd", 0);
 	if (!smd_log_ctx) {
 		pr_err("%s: unable to create SMD logging context\n", __func__);
 		msm_smd_debug_mask = 0;
 	}
 
-	smsm_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smsm");
+	smsm_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smsm", 0);
 	if (!smsm_log_ctx) {
 		pr_err("%s: unable to create SMSM logging context\n", __func__);
 		msm_smd_debug_mask = 0;

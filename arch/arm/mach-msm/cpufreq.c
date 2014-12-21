@@ -230,12 +230,20 @@ static int msm_cpufreq_verify(struct cpufreq_policy *policy)
 
 static unsigned int msm_cpufreq_get_freq(unsigned int cpu)
 {
+<<<<<<< HEAD
 	if (is_clk) {
 		if (cpu_clk[cpu])
 			return clk_get_rate(cpu_clk[cpu]) / 1000;
 		else if (is_sync)
 			return clk_get_rate(cpu_clk[0]) / 1000;
 	}
+=======
+	if (is_clk && is_sync)
+		cpu = 0;
+
+	if (is_clk)
+		return clk_get_rate(cpu_clk[cpu]) / 1000;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 	return acpuclk_get_rate(cpu);
 }
@@ -329,22 +337,48 @@ static int __cpuinit msm_cpufreq_cpu_callback(struct notifier_block *nfb,
 	 * before the CPU is brought up.
 	 */
 	case CPU_DEAD:
+<<<<<<< HEAD
 	case CPU_UP_CANCELED:
 		if (is_clk && cpu_clk[cpu]) {
+=======
+		if (is_clk) {
+>>>>>>> caf/LA.BF.1.1_rb1.9
 			clk_disable_unprepare(cpu_clk[cpu]);
 			clk_disable_unprepare(l2_clk);
 			update_l2_bw(NULL);
 		}
 		break;
+	case CPU_UP_CANCELED:
+		if (is_clk) {
+			clk_unprepare(cpu_clk[cpu]);
+			clk_unprepare(l2_clk);
+			update_l2_bw(NULL);
+		}
+		break;
 	case CPU_UP_PREPARE:
+<<<<<<< HEAD
 		if (is_clk && cpu_clk[cpu]) {
 			rc = clk_prepare_enable(l2_clk);
+=======
+		if (is_clk) {
+			rc = clk_prepare(l2_clk);
+>>>>>>> caf/LA.BF.1.1_rb1.9
 			if (rc < 0)
 				return NOTIFY_BAD;
-			rc = clk_prepare_enable(cpu_clk[cpu]);
+			rc = clk_prepare(cpu_clk[cpu]);
 			if (rc < 0)
 				return NOTIFY_BAD;
 			update_l2_bw(&cpu);
+		}
+		break;
+	case CPU_STARTING:
+		if (is_clk) {
+			rc = clk_enable(l2_clk);
+			if (rc < 0)
+				return NOTIFY_BAD;
+			rc = clk_enable(cpu_clk[cpu]);
+			if (rc < 0)
+				return NOTIFY_BAD;
 		}
 		break;
 	default:

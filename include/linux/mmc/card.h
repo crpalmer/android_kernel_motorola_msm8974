@@ -109,7 +109,11 @@ struct mmc_ext_csd {
 	u8			raw_erased_mem_count;	/* 181 */
 	u8			raw_ext_csd_structure;	/* 194 */
 	u8			raw_card_type;		/* 196 */
+<<<<<<< HEAD
 	u8			raw_driver_strength;	/* 197 */
+=======
+	u8			raw_drive_strength;	/* 197 */
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	u8			out_of_int_time;	/* 198 */
 	u8			raw_s_a_timeout;		/* 217 */
 	u8			raw_hc_erase_gap_size;	/* 221 */
@@ -380,8 +384,11 @@ struct mmc_card {
 #define MMC_QUIRK_BROKEN_DATA_TIMEOUT	(1<<12)
 
 #define MMC_QUIRK_CACHE_DISABLE (1 << 14)       /* prevent cache enable */
+<<<<<<< HEAD
 #define MMC_QUIRK_SLOW_HPI_RESPONSE (1 << 30)   /* wait between STOP and HPI */
 #define MMC_QUIRK_RETRY_FLUSH_TIMEOUT (1 << 31) /* requeue flush command timeouts */
+=======
+>>>>>>> caf/LA.BF.1.1_rb1.9
 
 	unsigned int		erase_size;	/* erase size in sectors */
  	unsigned int		erase_shift;	/* if erase unit is power 2 */
@@ -484,7 +491,11 @@ struct mmc_fixup {
 #define CID_MANFID_TOSHIBA	0x11
 #define CID_MANFID_MICRON	0x13
 #define CID_MANFID_SAMSUNG	0x15
+<<<<<<< HEAD
 #define CID_MANFID_SANDISK2	0x45
+=======
+#define CID_MANFID_KINGSTON	0x70
+>>>>>>> caf/LA.BF.1.1_rb1.9
 #define CID_MANFID_HYNIX	0x90
 
 #define END_FIXUP { 0 }

@@ -159,6 +159,10 @@ int ping_v6_sendmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 	fl6.flowi6_proto = IPPROTO_ICMPV6;
 	fl6.saddr = np->saddr;
 	fl6.daddr = *daddr;
+<<<<<<< HEAD
+=======
+	fl6.flowi6_mark = sk->sk_mark;
+>>>>>>> caf/LA.BF.1.1_rb1.9
 	fl6.fl6_icmp_type = user_icmph.icmp6_type;
 	fl6.fl6_icmp_code = user_icmph.icmp6_code;
 	fl6.flowi6_uid = sock_i_uid(sk);
