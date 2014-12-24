@@ -17,7 +17,11 @@
 #include <linux/poll.h>
 #include <linux/videodev2.h>
 
+#ifdef CONFIG_MACH_VICTARA
+#define VB2_MAX_FRAME  32
+#else
 #define VB2_MAX_FRAME  64
+#endif
 
 struct vb2_alloc_ctx;
 struct vb2_fileio_data;

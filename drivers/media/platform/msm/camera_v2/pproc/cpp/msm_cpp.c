@@ -656,6 +656,7 @@ void msm_cpp_do_tasklet(unsigned long data)
 
 static void cpp_get_clk_freq_tbl(struct clk *clk, struct cpp_hw_info *hw_info)
 {
+#ifndef CONFIG_MACH_VICTARA
 	uint32_t count;
 	signed long freq_tbl_entry = 0;
 
@@ -674,7 +675,9 @@ static void cpp_get_clk_freq_tbl(struct clk *clk, struct cpp_hw_info *hw_info)
 	}
 
 	hw_info->freq_tbl_count = count;
+#endif
 }
+
 static int cpp_init_hardware(struct cpp_device *cpp_dev)
 {
 	int rc = 0;

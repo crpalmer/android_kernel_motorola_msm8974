@@ -584,7 +584,11 @@ int msm_isp_request_axi_stream(struct vfe_device *vfe_dev, void *arg)
 
 	msm_isp_calculate_framedrop(&vfe_dev->axi_data, stream_cfg_cmd);
 	stream_info->vt_enable = stream_cfg_cmd->vt_enable;
+#ifdef CONFIG_MACH_VICTARA
+	axi_data->burst_len = 1;
+#else
 	axi_data->burst_len = stream_cfg_cmd->burst_len;
+#endif
 
 	if (stream_info->vt_enable) {
 		vfe_dev->vt_enable = stream_info->vt_enable;
